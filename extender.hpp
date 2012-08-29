@@ -87,8 +87,6 @@ struct extender1
 	}
 };
 
-// TODO: Unify extender2 and extender3
-
 namespace detail {
 
 template<int N, typename C, typename T, typename F>
@@ -127,6 +125,7 @@ struct extender2
 	typedef detail::extender2_wrap_arg<boost::function_types::function_arity<F>::value, C, T, F> _;
 };
 
+// NOTE: Maybe alias template to extender2 can be used
 // TODO: Guard by C++0x detection macro
 // NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T, typename F>
@@ -135,32 +134,14 @@ struct extender3
 	typedef typename boost::function_types::result_type<F>::type result_type;
 	typedef typename boost::function_types::parameter_types<F> param_types;
 	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-	// TODO: Make use of PP or variadic templates
-	// TODO: Guard by arity
+	// TODO: Guard by parameter type
 	fusion_type ft;
-	extender3()
+	template<typename ... Args>
+	extender3(Args && ... args) : ft(std::forward<Args>(args)...)
 	{
+		static_assert(boost::function_types::function_arity<F>::value == sizeof ... (args), "the number of arguments mismatches with function arity.");
 	}
-	extender3(
-		typename boost::mpl::at_c<param_types, 0>::type a0
-	) : ft(a0)
-	{
-	}
-	extender3(
-		typename boost::mpl::at_c<param_types, 0>::type a0,
-		typename boost::mpl::at_c<param_types, 1>::type a1
-	) : ft(a0, a1)
-	{
-	}
-	extender3(
-		typename boost::mpl::at_c<param_types, 0>::type a0,
-		typename boost::mpl::at_c<param_types, 1>::type a1,
-		typename boost::mpl::at_c<param_types, 2>::type a2
-	) : ft(a0, a1, a2)
-	{
-	}
-	typedef extender3 target_type;
-	friend result_type operator->*(T& t, const target_type& c)
+	friend result_type operator->*(T& t, const extender3& c)
 	{
 		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
 	}
