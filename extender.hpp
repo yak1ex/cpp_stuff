@@ -94,82 +94,29 @@ namespace detail {
 template<int N, typename C, typename T, typename F>
 struct extender2_wrap_arg;
 
-template<typename C, typename T, typename F>
-struct extender2_wrap_arg<0, C, T, F>
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
+#define EXTENDER_PP_TEMPLATE2_(z, n, data) typename boost::mpl::at_c<param_types, n>::type BOOST_PP_CAT(a, n)
 
-	fusion_type ft;
-	extender2_wrap_arg()
-	{
-	}
-	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
-	{
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
-	}
+#define EXTENDER_PP_TEMPLATE2(z, n, data) \
+template<typename C, typename T, typename F> \
+struct extender2_wrap_arg<n, C, T, F> \
+{ \
+	typedef typename boost::function_types::result_type<F>::type result_type; \
+	typedef typename boost::function_types::parameter_types<F> param_types; \
+	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type; \
+\
+	fusion_type ft; \
+	extender2_wrap_arg( \
+		BOOST_PP_ENUM(n, EXTENDER_PP_TEMPLATE2_, _) \
+	) : ft(BOOST_PP_ENUM_PARAMS(n, a)) \
+	{ \
+	} \
+	friend result_type operator->*(T& t, const extender2_wrap_arg& c) \
+	{ \
+		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t))); \
+	} \
 };
 
-template<typename C, typename T, typename F>
-struct extender2_wrap_arg<1, C, T, F>
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-
-	fusion_type ft;
-	extender2_wrap_arg(
-		typename boost::mpl::at_c<param_types, 0>::type a0
-	) : ft(a0)
-	{
-	}
-	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
-	{
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
-	}
-};
-
-template<typename C, typename T, typename F>
-struct extender2_wrap_arg<2, C, T, F>
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-
-	fusion_type ft;
-	extender2_wrap_arg(
-		typename boost::mpl::at_c<param_types, 0>::type a0,
-		typename boost::mpl::at_c<param_types, 1>::type a1
-	) : ft(a0, a1)
-	{
-	}
-	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
-	{
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
-	}
-};
-
-template<typename C, typename T, typename F>
-struct extender2_wrap_arg<3, C, T, F>
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-
-	fusion_type ft;
-	extender2_wrap_arg(
-		typename boost::mpl::at_c<param_types, 0>::type a0,
-		typename boost::mpl::at_c<param_types, 1>::type a1,
-		typename boost::mpl::at_c<param_types, 2>::type a2
-	) : ft(a0, a1, a2)
-	{
-	}
-	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
-	{
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
-	}
-};
+BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE2, _)
 
 } // namespace detail
 
@@ -177,7 +124,6 @@ struct extender2_wrap_arg<3, C, T, F>
 template<typename C, typename T, typename F>
 struct extender2
 {
-	// TODO: Make use of PP or variadic templates
 	typedef detail::extender2_wrap_arg<boost::function_types::function_arity<F>::value, C, T, F> _;
 };
 
