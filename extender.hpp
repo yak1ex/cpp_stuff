@@ -89,46 +89,96 @@ struct extender1
 
 // TODO: Unify extender2 and extender3
 
-// NOTE: irregular operator semantics/precedence
+namespace detail {
+
+template<int N, typename C, typename T, typename F>
+struct extender2_wrap_arg;
+
 template<typename C, typename T, typename F>
-struct extender2
+struct extender2_wrap_arg<0, C, T, F>
 {
 	typedef typename boost::function_types::result_type<F>::type result_type;
 	typedef typename boost::function_types::parameter_types<F> param_types;
 	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-	// TODO: inheriting constructor version
-	// TODO: Make use of PP or variadic templates
-	// TODO: Guard by arity
-	struct _
+
+	fusion_type ft;
+	extender2_wrap_arg()
 	{
-		fusion_type ft;
-		_()
-		{
-		}
-		_(
-			typename boost::mpl::at_c<param_types, 0>::type a0
-		) : ft(a0)
-		{
-		}
-		_(
-			typename boost::mpl::at_c<param_types, 0>::type a0,
-			typename boost::mpl::at_c<param_types, 1>::type a1
-		) : ft(a0, a1)
-		{
-		}
-		_(
-			typename boost::mpl::at_c<param_types, 0>::type a0,
-			typename boost::mpl::at_c<param_types, 1>::type a1,
-			typename boost::mpl::at_c<param_types, 2>::type a2
-		) : ft(a0, a1, a2)
-		{
-		}
-	};
-	typedef typename extender2::_ target_type;
-	friend result_type operator->*(T& t, const target_type& c)
+	}
+	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
 	{
 		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
 	}
+};
+
+template<typename C, typename T, typename F>
+struct extender2_wrap_arg<1, C, T, F>
+{
+	typedef typename boost::function_types::result_type<F>::type result_type;
+	typedef typename boost::function_types::parameter_types<F> param_types;
+	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
+
+	fusion_type ft;
+	extender2_wrap_arg(
+		typename boost::mpl::at_c<param_types, 0>::type a0
+	) : ft(a0)
+	{
+	}
+	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
+	{
+		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
+	}
+};
+
+template<typename C, typename T, typename F>
+struct extender2_wrap_arg<2, C, T, F>
+{
+	typedef typename boost::function_types::result_type<F>::type result_type;
+	typedef typename boost::function_types::parameter_types<F> param_types;
+	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
+
+	fusion_type ft;
+	extender2_wrap_arg(
+		typename boost::mpl::at_c<param_types, 0>::type a0,
+		typename boost::mpl::at_c<param_types, 1>::type a1
+	) : ft(a0, a1)
+	{
+	}
+	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
+	{
+		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
+	}
+};
+
+template<typename C, typename T, typename F>
+struct extender2_wrap_arg<3, C, T, F>
+{
+	typedef typename boost::function_types::result_type<F>::type result_type;
+	typedef typename boost::function_types::parameter_types<F> param_types;
+	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
+
+	fusion_type ft;
+	extender2_wrap_arg(
+		typename boost::mpl::at_c<param_types, 0>::type a0,
+		typename boost::mpl::at_c<param_types, 1>::type a1,
+		typename boost::mpl::at_c<param_types, 2>::type a2
+	) : ft(a0, a1, a2)
+	{
+	}
+	friend result_type operator->*(T& t, const extender2_wrap_arg& c)
+	{
+		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
+	}
+};
+
+} // namespace detail
+
+// NOTE: irregular operator semantics/precedence
+template<typename C, typename T, typename F>
+struct extender2
+{
+	// TODO: Make use of PP or variadic templates
+	typedef detail::extender2_wrap_arg<boost::function_types::function_arity<F>::value, C, T, F> _;
 };
 
 // TODO: Guard by C++0x detection macro
