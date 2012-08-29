@@ -32,7 +32,7 @@ struct func2 : public yak::util::extender2<func2, test::A, test::A&(int)>
 };
 
 #ifdef YAK_UTIL_EXTENDER3_ENABLED
-BEGIN_EXTENDER(test::A, (test::A&)(func3)(((test::A&, a))((int, n))))
+BEGIN_EXTENDER(test::A, (test::A&)(func3)((test::A&, a))((int, n)))
 {
 	a.n += n;
 	std::cout << a.n << ':' << n << std::endl;

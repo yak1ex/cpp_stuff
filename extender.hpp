@@ -165,9 +165,11 @@ struct extender3
 #include <boost/preprocessor/seq/transform.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+// TODO: variadic style support
+
 #define EXTENDER_PP_RESULT_TYPE(signature)   BOOST_PP_SEQ_ELEM(0, signature)
 #define EXTENDER_PP_FUNC_NAME(signature)     BOOST_PP_SEQ_ELEM(1, signature)
-#define EXTENDER_PP_PARAMS(signature)        BOOST_PP_SEQ_ELEM(2, signature)
+#define EXTENDER_PP_PARAMS(signature)        BOOST_PP_SEQ_TAIL(BOOST_PP_SEQ_TAIL(signature))
 #define EXTENDER_PP_TYPE_EXTRACT(s, d, e)    BOOST_PP_TUPLE_ELEM(2, 0, e)
 #define EXTENDER_PP_PARAM_TYPES(signature)   BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(EXTENDER_PP_TYPE_EXTRACT, _, BOOST_PP_SEQ_TAIL(EXTENDER_PP_PARAMS(signature))))
 #define EXTENDER_PP_FUNC_TYPE(signature)     EXTENDER_PP_RESULT_TYPE(signature)(EXTENDER_PP_PARAM_TYPES(signature))
