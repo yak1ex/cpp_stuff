@@ -7,8 +7,8 @@
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
 #include <boost/function_types/function_type.hpp>
+#include <boost/function_types/function_arity.hpp>
 #include <boost/mpl/vector.hpp>
-#include <boost/mpl/int.hpp>
 #include <boost/mpl/at.hpp>
 #include <boost/mpl/push_front.hpp>
 #include <boost/fusion/adapted/mpl.hpp>
@@ -16,15 +16,20 @@
 #include <boost/fusion/functional/invocation/invoke.hpp>
 #include <boost/fusion/include/push_front.hpp>
 
+#include <boost/preprocessor/repetition/repeat.hpp>
+#include <boost/preprocessor/repetition/enum.hpp>
+#include <boost/preprocessor/punctuation/comma_if.hpp>
+
 namespace yak {
 namespace util {
 
-// NOTE: ordinary operator semantics/precedence
-// XXX: Maybe C::func is passed, too
-template<typename C, typename T, typename F>
-struct extender1
+namespace detail {
+
+template<typename T, typename F>
+struct extender1_wrap_base
 {
 	typedef typename boost::function_types::result_type<F>::type result_type;
+	// XXX: Maybe explicitly specify ClassTransform as identity or others
 	typedef typename boost::function_types::parameter_types<F> param_types;
 	typedef typename boost::function_types::function_type<
 		typename boost::mpl::push_front<
@@ -33,44 +38,52 @@ struct extender1
 			>::type, result_type
 		>::type
 	>::type func_type;
-	template<typename F2>
-	struct wrap
+	typedef boost::function_types::function_arity<F> arity_type;
+	T& t;
+	func_type* f;
+	extender1_wrap_base(T& t, func_type* f) : t(t), f(f) {}
+};
+
+template<int N, typename T, typename F>
+struct extender1_wrap_arg;
+
+#define EXTENDER_PP_TEMPLATE1_(z, n, data) typename boost::mpl::at_c<param_types, n>::type BOOST_PP_CAT(a, n)
+
+#define EXTENDER_PP_TEMPLATE1(z, n, data) \
+template<typename T, typename F> \
+struct extender1_wrap_arg<n, T, F> : public extender1_wrap_base<T, F> \
+{ \
+	typedef extender1_wrap_base<T, F> base_type; \
+	typedef typename base_type::func_type func_type; \
+	typedef typename base_type::result_type result_type; \
+	typedef typename base_type::param_types param_types; \
+\
+	extender1_wrap_arg(T& t, func_type* f) : base_type(t, f) {} \
+	result_type operator()( \
+		BOOST_PP_ENUM(n, EXTENDER_PP_TEMPLATE1_, _) \
+	) \
+	{ \
+		return f(base_type::t BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, a)); \
+	} \
+};
+
+BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE1, _)
+
+}
+
+// NOTE: ordinary operator semantics/precedence
+// XXX: Maybe C::func is passed, too
+template<typename C, typename T, typename F>
+struct extender1
+{
+	struct wrap : public detail::extender1_wrap_arg<boost::function_types::function_arity<F>::value, T, F>
 	{
-		T& t;
-		func_type* f;
-		wrap(T& t, func_type* f) : t(t), f(f) {}
-		// XXX: Maybe explicitly specify ClassTransform as identity or others
-		// TODO: Make use of PP or variadic templates
-		// TODO: Guard by arity
-		result_type operator()()
-		{
-			return f(t);
-		}
-		result_type operator()(
-			typename boost::mpl::at_c<param_types, 0>::type a0
-		)
-		{
-			return f(t, a0);
-		}
-		result_type operator()(
-			typename boost::mpl::at_c<param_types, 0>::type a0,
-			typename boost::mpl::at_c<param_types, 1>::type a1
-		)
-		{
-			return f(t, a0, a1);
-		}
-		result_type operator()(
-			typename boost::mpl::at_c<param_types, 0>::type a0,
-			typename boost::mpl::at_c<param_types, 1>::type a1,
-			typename boost::mpl::at_c<param_types, 2>::type a2
-		)
-		{
-			return f(t, a0, a1, a2);
-		}
+		typedef detail::extender1_wrap_arg<boost::function_types::function_arity<F>::value, T, F> base_type;
+		wrap(T& t, typename base_type::func_type* f) : base_type(t, f) {}
 	};
 	friend boost::function<F> operator->*(T& t, const C&)
 	{
-		return wrap<F>(t, C::func);
+		return wrap(t, C::func);
 	}
 };
 
@@ -118,6 +131,7 @@ struct extender2
 	}
 };
 
+// TODO: Guard by C++0x detection macro
 // NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T, typename F>
 struct extender3
