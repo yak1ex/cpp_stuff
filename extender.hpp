@@ -125,8 +125,12 @@ struct extender2
 	typedef detail::extender2_wrap_arg<boost::function_types::function_arity<F>::value, C, T, F> _;
 };
 
+#if !defined(BOOST_NO_VARIADIC_TEMPLATES) && \
+    !defined(BOOST_NO_STATIC_ASSERT) && \
+    !defined(BOOST_NO_RVALUE_REFERENCES)
+#define YAK_UTIL_EXTENDER3_ENABLED
+
 // NOTE: Maybe alias template to extender2 can be used
-// TODO: Guard by C++0x detection macro
 // NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T, typename F>
 struct extender3
@@ -147,10 +151,12 @@ struct extender3
 	}
 };
 
-
+#endif
 
 } // namespace util
 } // namespace yak
+
+#ifdef YAK_UTIL_EXTENDER3_ENABLED
 
 #include <boost/preprocessor/seq/seq.hpp>
 #include <boost/preprocessor/seq/size.hpp>
@@ -176,5 +182,7 @@ struct EXTENDER_PP_FUNC_NAME(signature) : public yak::util::extender3<EXTENDER_P
 	static typename boost::function_types::result_type<EXTENDER_PP_FUNC_TYPE(signature)>::type func(EXTENDER_PP_FUNC_ARGS(signature))
 #define END_EXTENDER() \
 };
+
+#endif
 
 #endif // YAK_UTIL_EXTENDER

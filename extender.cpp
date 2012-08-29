@@ -31,6 +31,7 @@ struct func2 : public yak::util::extender2<func2, test::A, test::A&(int)>
 	}
 };
 
+#ifdef YAK_UTIL_EXTENDER3_ENABLED
 BEGIN_EXTENDER(test::A, (test::A&)(func3)(((test::A&, a))((int, n))))
 {
 	a.n += n;
@@ -38,6 +39,7 @@ BEGIN_EXTENDER(test::A, (test::A&)(func3)(((test::A&, a))((int, n))))
 	return a;
 }
 END_EXTENDER()
+#endif
 
 }
 
@@ -45,11 +47,17 @@ int main(void)
 {
 	using ext::func1;
 	using ext::func2;
+#ifdef YAK_UTIL_EXTENDER3_ENABLED
 	using ext::func3;
+#endif
 
 	test::A a = { 0 };
 	(a->*func1)(1);
 // NOTE: different from ordinary operator semantics/precedence
+#ifdef YAK_UTIL_EXTENDER3_ENABLED
 	a->*func2::_(3)->*func3(5);
+#else
+	a->*func2::_(3);
+#endif
 	return 0;
 }
