@@ -24,7 +24,9 @@
 #include <boost/preprocessor/repetition/enum.hpp>
 
 #include "forward_adapter_.hpp"
+#if !defined(BOOST_NO_VARIADIC_TEMPLATES)
 #include "variadic_bridge.hpp"
+#endif
 
 namespace yak {
 namespace util {
@@ -160,7 +162,7 @@ template<typename T> struct ftype<T&&>      { typedef const T& type; };
 template<typename C, typename T, typename ... Args>
 struct extender3_wrap_
 {
-#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
+#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 6)
 	typedef typename boost::fusion::result_of::as_vector<
 		typename yak::util::variadic_to_vector<typename ftype<Args&&>::type...>::type
 	>::type fusion_type;
