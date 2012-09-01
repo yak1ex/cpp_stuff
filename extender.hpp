@@ -154,30 +154,9 @@ struct extender2
 };
 
 #if !defined(BOOST_NO_VARIADIC_TEMPLATES) && \
-    !defined(BOOST_NO_STATIC_ASSERT) && \
+    !defined(BOOST_NO_DECLTYPE) && \
     !defined(BOOST_NO_RVALUE_REFERENCES)
 #define YAK_UTIL_EXTENDER3_ENABLED
-
-// NOTE: Maybe alias template to extender2 can be used
-// NOTE: irregular operator semantics/precedence with macro support
-template<typename C, typename T, typename F>
-struct extender3
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type;
-	// TODO: Guard by parameter type
-	fusion_type ft;
-	template<typename ... Args>
-	extender3(Args && ... args) : ft(std::forward<Args>(args)...)
-	{
-		static_assert(boost::function_types::function_arity<F>::value == sizeof ... (args), "the number of arguments mismatches with function arity.");
-	}
-	friend result_type operator->*(T& t, const extender3& c)
-	{
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t)));
-	}
-};
 
 namespace detail {
 
@@ -192,7 +171,7 @@ template<typename T> struct ftype<T&&>      { typedef const T& type; };
 #endif // defined(YAK_BOOST_FUSION_HAS_RR_SUPPORT)
 
 template<typename C, typename T, typename ... Args>
-struct extender3_wrap_
+struct extender3_wrap
 {
 #if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 6)
 	typedef typename boost::fusion::result_of::as_vector<
@@ -203,63 +182,65 @@ struct extender3_wrap_
 #endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
 	fusion_type args;
 
-	extender3_wrap_(Args&& ... args) : args(std::forward<Args>(args)...) {}
-	friend auto operator->*(T& t, const extender3_wrap_& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
-
+	extender3_wrap(Args&& ... args) : args(std::forward<Args>(args)...) {}
+	friend auto operator->*(T& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
 	{
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
 	}
-	friend auto operator->*(const T& t, const extender3_wrap_& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
-
+	friend auto operator->*(const T& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
 	{
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
 	}
+#ifdef YAK_BOOST_FUSION_HAS_RR_SUPPORT
+//	might be implemented as follows:
+	friend auto operator->*(T&& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+	{
+		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
+	}
+#endif // defined(YAK_BOOST_FUSION_HAS_RR_SUPPORT)
 };
 
 } // namespace detail
 
+// NOTE: Maybe PP version obsoletes extender2
+// NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T>
-struct extender3_
+struct extender3
 {
 	template<typename ... Args>
-	detail::extender3_wrap_<C, T, Args...> operator()(Args&& ... args) const
+	detail::extender3_wrap<C, T, Args...> operator()(Args&& ... args) const
 	{
-		return detail::extender3_wrap_<C, T, Args...>(std::forward<Args>(args)...);
+		return detail::extender3_wrap<C, T, Args...>(std::forward<Args>(args)...);
 	}
 };
 
-#endif // !defined(BOOST_NO_VARIADIC_TEMPLATES) && !defined(BOOST_NO_STATIC_ASSERT) && !defined(BOOST_NO_RVALUE_REFERENCES)
+#endif // !defined(BOOST_NO_VARIADIC_TEMPLATES) && !defined(BOOST_NO_DECLTYPE) && !defined(BOOST_NO_RVALUE_REFERENCES)
 
 } // namespace util
 } // namespace yak
 
 #ifdef YAK_UTIL_EXTENDER3_ENABLED
 
-#include <boost/preprocessor/seq/elem.hpp>
-#include <boost/preprocessor/seq/seq.hpp>
-#include <boost/preprocessor/tuple/elem.hpp>
-#include <boost/preprocessor/seq/enum.hpp>
-#include <boost/preprocessor/seq/transform.hpp>
+// DEFINE_EXTENDER(extend_target, extension_method_name, { functor class definition without class-head });
+// NOTE: Without variadic macro, you can not place comma inside the functor class definition directly.
 
-// TODO: variadic style support
+#if defined(BOOST_NO_VARIADIC_MACROS)
 
-#define EXTENDER_PP_RESULT_TYPE(signature)   BOOST_PP_SEQ_ELEM(0, signature)
-#define EXTENDER_PP_FUNC_NAME(signature)     BOOST_PP_SEQ_ELEM(1, signature)
-#define EXTENDER_PP_PARAMS(signature)        BOOST_PP_SEQ_TAIL(BOOST_PP_SEQ_TAIL(signature))
-#define EXTENDER_PP_TYPE_EXTRACT(s, d, e)    BOOST_PP_TUPLE_ELEM(2, 0, e)
-#define EXTENDER_PP_PARAM_TYPES(signature)   BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(EXTENDER_PP_TYPE_EXTRACT, _, BOOST_PP_SEQ_TAIL(EXTENDER_PP_PARAMS(signature))))
-#define EXTENDER_PP_FUNC_TYPE(signature)     EXTENDER_PP_RESULT_TYPE(signature)(EXTENDER_PP_PARAM_TYPES(signature))
-#define EXTENDER_PP_ARG_EXTRACT(s, d, e)     BOOST_PP_TUPLE_ELEM(2, 0, e) BOOST_PP_TUPLE_ELEM(2, 1, e)
-#define EXTENDER_PP_FUNC_ARGS(signature)     BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(EXTENDER_PP_ARG_EXTRACT, _, EXTENDER_PP_PARAMS(signature)))
-
-#define BEGIN_EXTENDER(target, signature) \
-struct EXTENDER_PP_FUNC_NAME(signature) : public yak::util::extender3<EXTENDER_PP_FUNC_NAME(signature), target, EXTENDER_PP_FUNC_TYPE(signature)> \
+#define DEFINE_EXTENDER(target, name, impl) \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(name, _functor), target> \
 { \
-	template<typename ... Args> \
-	EXTENDER_PP_FUNC_NAME(signature)(Args&& ... args) : extender3(std::forward<Args>(args)...) {} \
-	static typename boost::function_types::result_type<EXTENDER_PP_FUNC_TYPE(signature)>::type func(EXTENDER_PP_FUNC_ARGS(signature))
-#define END_EXTENDER() \
-};
+	struct _ impl; \
+} name
+
+#else
+
+#define DEFINE_EXTENDER(target, name, ...) \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(name, _functor), target> \
+{ \
+	struct _ __VA_ARGS__; \
+} name
+
+#endif
 
 #endif
 
