@@ -5,94 +5,77 @@
 
 #include <boost/detail/workaround.hpp>
 
-#include <boost/function.hpp>
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
-#include <boost/function_types/function_type.hpp>
 #include <boost/function_types/function_arity.hpp>
-#include <boost/mpl/vector.hpp>
 #include <boost/mpl/at.hpp>
-#include <boost/mpl/push_front.hpp>
 #include <boost/fusion/adapted/mpl.hpp>
 #include <boost/fusion/include/as_vector.hpp>
 #include <boost/fusion/functional/invocation/invoke.hpp>
 #include <boost/fusion/include/push_front.hpp>
 
 #include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/repetition/enum.hpp>
-#include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
-#include <boost/preprocessor/repetition/repeat.hpp>
 #include <boost/preprocessor/repetition/enum_binary_params.hpp>
 #include <boost/preprocessor/repetition/enum_trailing.hpp>
 #include <boost/preprocessor/control/if.hpp>
+#include <boost/preprocessor/repetition/repeat.hpp>
+#include <boost/preprocessor/repetition/enum.hpp>
 
 #include "forward_adapter_.hpp"
 
 namespace yak {
 namespace util {
 
-namespace detail {
-
-template<typename T, typename F>
-struct extender1_wrap_base
-{
-	typedef typename boost::function_types::result_type<F>::type result_type;
-	// XXX: Maybe explicitly specify ClassTransform as identity or others
-	typedef typename boost::function_types::parameter_types<F> param_types;
-	typedef typename boost::function_types::function_type<
-		typename boost::mpl::push_front<
-			typename boost::mpl::push_front<
-				param_types, T&
-			>::type, result_type
-		>::type
-	>::type func_type;
-	typedef boost::function_types::function_arity<F> arity_type;
-	T& t;
-	func_type* f;
-	extender1_wrap_base(T& t, func_type* f) : t(t), f(f) {}
-};
-
-template<int N, typename T, typename F>
-struct extender1_wrap_arg;
-
-#define EXTENDER_PP_TEMPLATE1_(z, n, data) typename boost::mpl::at_c<param_types, n>::type BOOST_PP_CAT(a, n)
-
-#define EXTENDER_PP_TEMPLATE1(z, n, data) \
-template<typename T, typename F> \
-struct extender1_wrap_arg<n, T, F> : public extender1_wrap_base<T, F> \
-{ \
-	typedef extender1_wrap_base<T, F> base_type; \
-	typedef typename base_type::func_type func_type; \
-	typedef typename base_type::result_type result_type; \
-	typedef typename base_type::param_types param_types; \
-\
-	extender1_wrap_arg(T& t, func_type* f) : base_type(t, f) {} \
-	result_type operator()( \
-		BOOST_PP_ENUM(n, EXTENDER_PP_TEMPLATE1_, _) \
-	) \
-	{ \
-		return this->f(base_type::t BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, a)); \
-	} \
-};
-
-BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE1, _)
-
-}
-
 // NOTE: ordinary operator semantics/precedence
-// XXX: Maybe C::func is passed, too
-template<typename C, typename T, typename F>
+template<typename C, typename T>
 struct extender1
 {
-	struct wrap : public detail::extender1_wrap_arg<boost::function_types::function_arity<F>::value, T, F>
+#if defined(BOOST_NO_RVALUE_REFERENCES)
+
+	typedef yak::boostex::forward_adapter_<T, C> wrap;
+
+#else // defined(BOOST_NO_RVALUE_REFERENCES)
+
+	struct wrap
 	{
-		typedef detail::extender1_wrap_arg<boost::function_types::function_arity<F>::value, T, F> base_type;
-		wrap(T& t, typename base_type::func_type* f) : base_type(t, f) {}
+		T &t;
+		wrap(T& t) : t(t) {}
+#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+#define EXTENDER_PP_TEMPLATE1_1(z, n, data) std::forward<BOOST_PP_CAT(Arg, n)>(BOOST_PP_CAT(arg, n))
+#define EXTENDER_PP_TEMPLATE1_2(n) \
+template<BOOST_PP_ENUM_PARAMS(n, typename Arg)> \
+auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1_1, _))) \
+{ return C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1_1, _)); }
+#define EXTENDER_PP_TEMPLATE1_3(n) \
+/* It seems that we can't define member fuction with appropriate return type lazily */ \
+/* decltype(C()(t)) operator()() const */ \
+/* { return C()(t); } */
+#define EXTENDER_PP_TEMPLATE1(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE1_2, EXTENDER_PP_TEMPLATE1_3)(n)
+
+		BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE1, _)
+
+#undef EXTENDER_PP_TEMPLATE1_1
+#undef EXTENDER_PP_TEMPLATE1_2
+#undef EXTENDER_PP_TEMPLATE1_3
+#undef EXTENDER_PP_TEMPLATE1
+
+#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+		template<typename ... Args>
+		auto operator()(Args && ... args) const -> decltype(C()(t, std::forward<Args>(args)...))
+		{ return C()(t, std::forward<Args>(args)...); }
+
+#endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
 	};
-	friend boost::function<F> operator->*(T& t, const C&)
+
+#endif // defined(BOOST_NO_RVALUE_REFERENCES)
+
+	friend wrap operator->*(T& t, C c)
 	{
-		return wrap(t, C::func);
+		return wrap(t);
 	}
 };
 
@@ -162,69 +145,16 @@ struct extender3
 
 #endif
 
-
-template<typename C, typename T>
-struct extender1_
-{
-#if defined(BOOST_NO_RVALUE_REFERENCES)
-
-	typedef yak::boostex::forward_adapter_<T, C> wrap;
-
-#else // defined(BOOST_NO_RVALUE_REFERENCES)
-
-	struct wrap
-	{
-		T &t;
-		wrap(T& t) : t(t) {}
-#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
-
-#define EXTENDER_PP_TEMPLATE1EX_(z, n, data) std::forward<BOOST_PP_CAT(Arg, n)>(BOOST_PP_CAT(arg, 0))
-#define EXTENDER_PP_TEMPLATE1EX_2(n) \
-template<BOOST_PP_ENUM_PARAMS(n, typename Arg)> \
-auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1EX_, _))) \
-{ return C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1EX_, _)); }
-#define EXTENDER_PP_TEMPLATE1EX_3(n) \
-/* It seems that we can't define member fuction with appropriate return type lazily */ \
-/* decltype(C()(t)) operator()() const */ \
-/* { return C()(t); } */
-#define EXTENDER_PP_TEMPLATE1EX(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE1EX_2, EXTENDER_PP_TEMPLATE1EX_3)(n)
-
-		BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE1EX, _)
-
-#undef EXTENDER_PP_TEMPLATE1EX_
-#undef EXTENDER_PP_TEMPLATE1EX_2
-#undef EXTENDER_PP_TEMPLATE1EX_3
-#undef EXTENDER_PP_TEMPLATE1EX
-
-#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
-
-		template<typename ... Args>
-		auto operator()(Args && ... args) const -> decltype(C()(t, std::forward<Args>(args)...))
-		{ return C()(t, std::forward<Args>(args)...); }
-
-#endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
-
-	};
-
-#endif // defined(BOOST_NO_RVALUE_REFERENCES)
-
-	friend wrap operator->*(T& t, C c)
-	{
-		return wrap(t);
-	}
-};
-
 } // namespace util
 } // namespace yak
 
 #ifdef YAK_UTIL_EXTENDER3_ENABLED
 
-#include <boost/preprocessor/seq/seq.hpp>
-#include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/seq/elem.hpp>
+#include <boost/preprocessor/seq/seq.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/seq/enum.hpp>
 #include <boost/preprocessor/seq/transform.hpp>
-#include <boost/preprocessor/tuple/elem.hpp>
 
 // TODO: variadic style support
 
