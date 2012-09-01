@@ -89,7 +89,7 @@ namespace boostex
         T& t;
       public:
         forward_adapter_(T& t, Function const& f = Function()) 
-          : t(t), Function(f) 
+          : Function(f), t(t)
         { }
 
         typedef Function        target_function_t;
@@ -114,7 +114,7 @@ namespace boostex
         T& t;
       public:
         forward_adapter_(T &t, Function const& f = Function())
-          : t(t), Function(f) 
+          : Function(f), t(t) 
         { }
 
         typedef Function const target_function_t;
