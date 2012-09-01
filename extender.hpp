@@ -117,44 +117,6 @@ public:
 
 };
 
-namespace detail {
-
-template<int N, typename C, typename T, typename F>
-struct extender2_wrap_arg;
-
-#define EXTENDER_PP_TEMPLATE2_(z, n, data) typename boost::mpl::at_c<param_types, n>::type BOOST_PP_CAT(a, n)
-
-#define EXTENDER_PP_TEMPLATE2(z, n, data) \
-template<typename C, typename T, typename F> \
-struct extender2_wrap_arg<n, C, T, F> \
-{ \
-	typedef typename boost::function_types::result_type<F>::type result_type; \
-	typedef typename boost::function_types::parameter_types<F> param_types; \
-	typedef typename boost::fusion::result_of::as_vector<param_types>::type fusion_type; \
-\
-	fusion_type ft; \
-	extender2_wrap_arg( \
-		BOOST_PP_ENUM(n, EXTENDER_PP_TEMPLATE2_, _) \
-	) : ft(BOOST_PP_ENUM_PARAMS(n, a)) \
-	{ \
-	} \
-	friend result_type operator->*(T& t, const extender2_wrap_arg& c) \
-	{ \
-		return boost::fusion::invoke(&C::func, boost::fusion::push_front(c.ft, boost::ref(t))); \
-	} \
-};
-
-BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE2, _)
-
-} // namespace detail
-
-// NOTE: irregular operator semantics/precedence
-template<typename C, typename T, typename F>
-struct extender2
-{
-	typedef detail::extender2_wrap_arg<boost::function_types::function_arity<F>::value, C, T, F> _;
-};
-
 #if !defined(BOOST_NO_VARIADIC_TEMPLATES) && \
     !defined(BOOST_NO_DECLTYPE) && \
     !defined(BOOST_NO_RVALUE_REFERENCES)
@@ -172,7 +134,7 @@ template<typename T> struct ftype<T&&>      { typedef const T& type; };
 #endif // defined(YAK_BOOST_FUSION_HAS_RR_SUPPORT)
 
 template<typename C, typename T, typename ... Args>
-struct extender3_wrap
+struct extender2_wrap
 {
 #if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 6)
 	typedef typename boost::fusion::result_of::as_vector<
@@ -183,18 +145,18 @@ struct extender3_wrap
 #endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
 	fusion_type args;
 
-	extender3_wrap(Args&& ... args) : args(std::forward<Args>(args)...) {}
-	friend auto operator->*(T& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+	extender2_wrap(Args&& ... args) : args(std::forward<Args>(args)...) {}
+	friend auto operator->*(T& t, const extender2_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
 	{
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
 	}
-	friend auto operator->*(const T& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+	friend auto operator->*(const T& t, const extender2_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
 	{
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
 	}
 #ifdef YAK_BOOST_FUSION_HAS_RR_SUPPORT
 //	might be implemented as follows:
-	friend auto operator->*(T&& t, const extender3_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+	friend auto operator->*(T&& t, const extender2_wrap& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
 	{
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
 	}
@@ -203,15 +165,14 @@ struct extender3_wrap
 
 } // namespace detail
 
-// NOTE: Maybe PP version obsoletes extender2
 // NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T>
-struct extender3
+struct extender2
 {
 	template<typename ... Args>
-	detail::extender3_wrap<C, T, Args...> operator()(Args&& ... args) const
+	detail::extender2_wrap<C, T, Args...> operator()(Args&& ... args) const
 	{
-		return detail::extender3_wrap<C, T, Args...>(std::forward<Args>(args)...);
+		return detail::extender2_wrap<C, T, Args...>(std::forward<Args>(args)...);
 	}
 };
 
@@ -219,67 +180,67 @@ struct extender3
 
 namespace detail {
 
-#define EXTENDER_PP_TEMPLATE3_1(z, n, data) \
+#define EXTENDER_PP_TEMPLATE2_1(z, n, data) \
 template<typename C, typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
-struct BOOST_PP_CAT(extender3_wrap, n) \
+struct BOOST_PP_CAT(extender2_wrap, n) \
 { \
 	typedef boost::fusion::vector<BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT)> fusion_type; \
 	fusion_type args; \
 \
-	BOOST_PP_CAT(extender3_wrap, n)(BOOST_PP_ENUM_BINARY_PARAMS(n, A, &a)) : args(BOOST_PP_ENUM_PARAMS(n, a)) {} \
+	BOOST_PP_CAT(extender2_wrap, n)(BOOST_PP_ENUM_BINARY_PARAMS(n, A, &a)) : args(BOOST_PP_ENUM_PARAMS(n, a)) {} \
 	friend typename boost::result_of<typename C::_(T& BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))>::type \
-	operator->*(T& t, const BOOST_PP_CAT(extender3_wrap, n)& c) \
+	operator->*(T& t, const BOOST_PP_CAT(extender2_wrap, n)& c) \
 	{ \
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))); \
 	} \
 	friend typename boost::result_of<typename C::_(const T& BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))>::type \
-	operator->*(const T& t, const BOOST_PP_CAT(extender3_wrap, n)& c) \
+	operator->*(const T& t, const BOOST_PP_CAT(extender2_wrap, n)& c) \
 	{ \
 		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))); \
 	} \
 };
 
-BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE3_1, _)
+BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE2_1, _)
 
-#define EXTENDER_PP_TEMPLATE3_2(n) \
+#define EXTENDER_PP_TEMPLATE2_2(n) \
 	template<typename F BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
 	struct result<F(BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))> \
 	{ \
-		typedef BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> type; \
+		typedef BOOST_PP_CAT(extender2_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> type; \
 	}; \
 	template<BOOST_PP_ENUM_PARAMS(n, typename A)> \
-	BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> \
+	BOOST_PP_CAT(extender2_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> \
 	operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, A, &a)) const \
 	{ \
-		return BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)>(BOOST_PP_ENUM_PARAMS(n, a)); \
+		return BOOST_PP_CAT(extender2_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)>(BOOST_PP_ENUM_PARAMS(n, a)); \
 	}
-#define EXTENDER_PP_TEMPLATE3_3(n) \
+#define EXTENDER_PP_TEMPLATE2_3(n) \
 	template<typename F> \
 	struct result<F()> \
 	{ \
-		typedef BOOST_PP_CAT(extender3_wrap, n)<C, T> type; \
+		typedef BOOST_PP_CAT(extender2_wrap, n)<C, T> type; \
 	}; \
-	BOOST_PP_CAT(extender3_wrap, n)<C, T> \
+	BOOST_PP_CAT(extender2_wrap, n)<C, T> \
 	operator()() const \
 	{ \
-		return BOOST_PP_CAT(extender3_wrap, n)<C, T>(); \
+		return BOOST_PP_CAT(extender2_wrap, n)<C, T>(); \
 	}
-#define EXTENDER_PP_TEMPLATE3_4(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE3_2, EXTENDER_PP_TEMPLATE3_3)(n)
+#define EXTENDER_PP_TEMPLATE2_4(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE2_2, EXTENDER_PP_TEMPLATE2_3)(n)
 
 template<typename C, typename T>
-struct extender3_wrap_factory
+struct extender2_wrap_factory
 {
 	template<typename>
 	struct result;
 
-	BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE3_4, _)
+	BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE2_4, _)
 };
 
 } // namespace detail
 
 // NOTE: irregular operator semantics/precedence with macro support
 template<typename C, typename T>
-struct extender3 : public boost::forward_adapter<detail::extender3_wrap_factory<C, T> >
+struct extender2 : public boost::forward_adapter<detail::extender2_wrap_factory<C, T> >
 {
 };
 
@@ -294,7 +255,7 @@ struct extender3 : public boost::forward_adapter<detail::extender3_wrap_factory<
 #if defined(BOOST_NO_VARIADIC_MACROS)
 
 #define DEFINE_EXTENDER(target, name, impl) \
-struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(name, _functor), target> \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender2<BOOST_PP_CAT(name, _functor), target> \
 { \
 	struct _ impl; \
 } name
@@ -302,7 +263,7 @@ struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(n
 #else // !defined(BOOST_NO_VARIADIC_MACROS)
 
 #define DEFINE_EXTENDER(target, name, ...) \
-struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(name, _functor), target> \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender2<BOOST_PP_CAT(name, _functor), target> \
 { \
 	struct _ __VA_ARGS__; \
 } name
