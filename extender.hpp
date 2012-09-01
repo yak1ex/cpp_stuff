@@ -38,19 +38,29 @@ struct extender1
 #if defined(BOOST_NO_RVALUE_REFERENCES)
 
 	typedef yak::boostex::forward_adapter_<T, C> wrap;
+	typedef yak::boostex::forward_adapter_<const T, C> wrapc;
+	friend wrap operator->*(T& t, C c)
+	{
+		return wrap(t);
+	}
+	friend wrapc operator->*(const T& t, C c)
+	{
+		return wrapc(t);
+	}
 
 #else // defined(BOOST_NO_RVALUE_REFERENCES)
 
+	template<typename T2>
 	struct wrap
 	{
-		T &t;
-		wrap(T& t) : t(t) {}
+		T2 &&t;
+		wrap(T2&& t) : t(std::forward<T2>(t)) {}
 #if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
 
 #define EXTENDER_PP_TEMPLATE1_1(z, n, data) std::forward<BOOST_PP_CAT(Arg, n)>(BOOST_PP_CAT(arg, n))
 #define EXTENDER_PP_TEMPLATE1_2(n) \
 template<BOOST_PP_ENUM_PARAMS(n, typename Arg)> \
-auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1_1, _))) \
+auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C()(std::forward<T2>(t) BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1_1, _))) \
 { return C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1_1, _)); }
 #define EXTENDER_PP_TEMPLATE1_3(n) \
 /* It seems that we can't define member fuction with appropriate return type lazily */ \
@@ -74,13 +84,14 @@ auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C
 #endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
 
 	};
+	template<typename T2>
+	friend wrap<T2> operator->*(T2&& t, C c)
+	{
+		return wrap<T2>(std::forward<T2>(t));
+	}
 
 #endif // defined(BOOST_NO_RVALUE_REFERENCES)
 
-	friend wrap operator->*(T& t, C c)
-	{
-		return wrap(t);
-	}
 };
 
 namespace detail {
