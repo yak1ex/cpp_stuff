@@ -299,7 +299,7 @@ struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(n
 	struct _ impl; \
 } name
 
-#else
+#else // !defined(BOOST_NO_VARIADIC_MACROS)
 
 #define DEFINE_EXTENDER(target, name, ...) \
 struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(name, _functor), target> \
@@ -307,8 +307,7 @@ struct BOOST_PP_CAT(name, _functor) : public yak::util::extender3<BOOST_PP_CAT(n
 	struct _ __VA_ARGS__; \
 } name
 
-#endif
 
-#endif
+#endif // !defined(BOOST_NO_VARIADIC_MACROS)
 
 #endif // YAK_UTIL_EXTENDER
