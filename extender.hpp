@@ -3,6 +3,8 @@
 
 #include <utility>
 
+#include <boost/detail/workaround.hpp>
+
 #include <boost/function.hpp>
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
@@ -16,9 +18,16 @@
 #include <boost/fusion/functional/invocation/invoke.hpp>
 #include <boost/fusion/include/push_front.hpp>
 
-#include <boost/preprocessor/repetition/repeat.hpp>
+#include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/repetition/enum.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
+#include <boost/preprocessor/repetition/enum_params.hpp>
+#include <boost/preprocessor/repetition/repeat.hpp>
+#include <boost/preprocessor/repetition/enum_binary_params.hpp>
+#include <boost/preprocessor/repetition/enum_trailing.hpp>
+#include <boost/preprocessor/control/if.hpp>
+
+#include "forward_adapter_.hpp"
 
 namespace yak {
 namespace util {
@@ -152,6 +161,58 @@ struct extender3
 };
 
 #endif
+
+
+template<typename C, typename T>
+struct extender1_
+{
+#if defined(BOOST_NO_RVALUE_REFERENCES)
+
+	typedef yak::boostex::forward_adapter_<T, C> wrap;
+
+#else // defined(BOOST_NO_RVALUE_REFERENCES)
+
+	struct wrap
+	{
+		T &t;
+		wrap(T& t) : t(t) {}
+#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+#define EXTENDER_PP_TEMPLATE1EX_(z, n, data) std::forward<BOOST_PP_CAT(Arg, n)>(BOOST_PP_CAT(arg, 0))
+#define EXTENDER_PP_TEMPLATE1EX_2(n) \
+template<BOOST_PP_ENUM_PARAMS(n, typename Arg)> \
+auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1EX_, _))) \
+{ return C()(t BOOST_PP_ENUM_TRAILING(n, EXTENDER_PP_TEMPLATE1EX_, _)); }
+#define EXTENDER_PP_TEMPLATE1EX_3(n) \
+/* It seems that we can't define member fuction with appropriate return type lazily */ \
+/* decltype(C()(t)) operator()() const */ \
+/* { return C()(t); } */
+#define EXTENDER_PP_TEMPLATE1EX(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE1EX_2, EXTENDER_PP_TEMPLATE1EX_3)(n)
+
+		BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE1EX, _)
+
+#undef EXTENDER_PP_TEMPLATE1EX_
+#undef EXTENDER_PP_TEMPLATE1EX_2
+#undef EXTENDER_PP_TEMPLATE1EX_3
+#undef EXTENDER_PP_TEMPLATE1EX
+
+#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+		template<typename ... Args>
+		auto operator()(Args && ... args) const -> decltype(C()(t, std::forward<Args>(args)...))
+		{ return C()(t, std::forward<Args>(args)...); }
+
+#endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+	};
+
+#endif // defined(BOOST_NO_RVALUE_REFERENCES)
+
+	friend wrap operator->*(T& t, C c)
+	{
+		return wrap(t);
+	}
+};
 
 } // namespace util
 } // namespace yak
