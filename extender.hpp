@@ -63,7 +63,7 @@ struct extender1_wrap_arg<n, T, F> : public extender1_wrap_base<T, F> \
 		BOOST_PP_ENUM(n, EXTENDER_PP_TEMPLATE1_, _) \
 	) \
 	{ \
-		return f(base_type::t BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, a)); \
+		return this->f(base_type::t BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, a)); \
 	} \
 };
 
