@@ -13,6 +13,7 @@
 #include <boost/fusion/include/as_vector.hpp>
 #include <boost/fusion/functional/invocation/invoke.hpp>
 #include <boost/fusion/include/push_front.hpp>
+#include <boost/fusion/include/at_c.hpp>
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
@@ -23,6 +24,7 @@
 #include <boost/preprocessor/repetition/enum.hpp>
 
 #include "forward_adapter_.hpp"
+#include "variadic_bridge.hpp"
 
 namespace yak {
 namespace util {
@@ -143,7 +145,56 @@ struct extender3
 	}
 };
 
-#endif
+namespace detail {
+
+// For limitation of Boost.Fusion with rvalue references
+template<typename T> struct ftype;
+template<typename T> struct ftype<T&>       { typedef T& type; };
+template<typename T> struct ftype<const T&> { typedef const T& type; };
+#ifdef YAK_BOOST_FUSION_HAS_RR_SUPPORT
+template<typename T> struct ftype<T&&>      { typedef T&& type; };
+#else // defined(YAK_BOOST_FUSION_HAS_RR_SUPPORT)
+template<typename T> struct ftype<T&&>      { typedef const T& type; };
+#endif // defined(YAK_BOOST_FUSION_HAS_RR_SUPPORT)
+
+template<typename C, typename T, typename ... Args>
+struct extender3_wrap_
+{
+#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
+	typedef typename boost::fusion::result_of::as_vector<
+		typename yak::util::variadic_to_vector<typename ftype<Args&&>::type...>::type
+	>::type fusion_type;
+#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
+	typedef boost::fusion::vector<typename ftype<Args&&>::type...> fusion_type;
+#endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5)
+	fusion_type args;
+
+	extender3_wrap_(Args&& ... args) : args(std::forward<Args>(args)...) {}
+	friend auto operator->*(T& t, const extender3_wrap_& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+
+	{
+		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
+	}
+	friend auto operator->*(const T& t, const extender3_wrap_& c) -> decltype(boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))))
+
+	{
+		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t)));
+	}
+};
+
+} // namespace detail
+
+template<typename C, typename T>
+struct extender3_
+{
+	template<typename ... Args>
+	detail::extender3_wrap_<C, T, Args...> operator()(Args&& ... args) const
+	{
+		return detail::extender3_wrap_<C, T, Args...>(std::forward<Args>(args)...);
+	}
+};
+
+#endif // !defined(BOOST_NO_VARIADIC_TEMPLATES) && !defined(BOOST_NO_STATIC_ASSERT) && !defined(BOOST_NO_RVALUE_REFERENCES)
 
 } // namespace util
 } // namespace yak
