@@ -56,7 +56,6 @@ struct func2 : public yak::util::extender2<func2, test::A, test::A&(int)>
 	}
 };
 
-#ifdef YAK_UTIL_EXTENDER3_ENABLED
 DEFINE_EXTENDER(test::A, func3, 
 	{
 		// MUST follow result_of protocol
@@ -111,8 +110,6 @@ struct func3_functor : public yak::util::extender3<func3_functor, test::A>
 } func3;
 */
 
-#endif
-
 }
 
 int f() { return 0; }
@@ -121,9 +118,7 @@ int main(void)
 {
 	using ext::func1;
 	using ext::func2;
-#ifdef YAK_UTIL_EXTENDER3_ENABLED
 	using ext::func3;
-#endif
 
 	int n = 0;
 	test::A a = { 0 };
@@ -133,13 +128,9 @@ int main(void)
 	(a->*func1)(2, f());
 	(a->*func1)(2, n);
 // NOTE: different from ordinary operator semantics/precedence
-#ifdef YAK_UTIL_EXTENDER3_ENABLED
 	a->*func2::_(3)->*func3(5);
 	a->*func3(1)->*func3(1.1)->*func3(2, 3)->*func3(2, f())->*func3(2, n);
 	const_cast<const test::A&>(a)->*func3(1);
-#else
-	a->*func2::_(3);
-#endif
 
 	return 0;
 }

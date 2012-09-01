@@ -158,7 +158,6 @@ struct extender2
 #if !defined(BOOST_NO_VARIADIC_TEMPLATES) && \
     !defined(BOOST_NO_DECLTYPE) && \
     !defined(BOOST_NO_RVALUE_REFERENCES)
-#define YAK_UTIL_EXTENDER3_ENABLED
 
 namespace detail {
 
@@ -288,8 +287,6 @@ struct extender3 : public boost::forward_adapter<detail::extender3_wrap_factory<
 
 } // namespace util
 } // namespace yak
-
-#ifdef YAK_UTIL_EXTENDER3_ENABLED
 
 // DEFINE_EXTENDER(extend_target, extension_method_name, { functor class definition without class-head });
 // NOTE: Without variadic macro, you can not place comma inside the functor class definition directly.
