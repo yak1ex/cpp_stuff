@@ -55,7 +55,9 @@ struct extender1
 	{
 		T2 &&t;
 		wrap(T2&& t) : t(std::forward<T2>(t)) {}
-#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+// TODO: Not checked at GCC 4.3 and 4.4
+#if BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 4) || defined(BOOST_NO_VARIADIC_TEMPLATES)
 
 #define EXTENDER_PP_TEMPLATE1_1(z, n, data) std::forward<BOOST_PP_CAT(Arg, n)>(BOOST_PP_CAT(arg, n))
 #define EXTENDER_PP_TEMPLATE1_2(n) \
@@ -75,11 +77,30 @@ auto operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, Arg, && arg)) const -> decltype(C
 #undef EXTENDER_PP_TEMPLATE1_3
 #undef EXTENDER_PP_TEMPLATE1
 
-#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 4) || defined(BOOST_NO_VARIADIC_TEMPLATES)
+
+#if BOOST_WORKAROUND(__GNUC__, == 4) && ((__GNUC_MINOR__ == 5) || (__GNUC_MINOR__ == 6) && (__GNUC_PATCHLEVEL__ == 0))
+
+private:
+		template<typename ... Args>
+		struct deduce
+		{
+			typedef decltype(C()(std::forward<Args>(std::declval<Args>())...)) type;
+		};
+
+public:
 
 		template<typename ... Args>
-		auto operator()(Args && ... args) const -> decltype(C()(t, std::forward<Args>(args)...))
-		{ return C()(t, std::forward<Args>(args)...); }
+		typename deduce<T2,Args...>::type operator()(Args && ... args) const
+		{ return C()(std::forward<T2>(t), std::forward<Args>(args)...); }
+
+#else // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ == 6) && (__GNUC_PATCHLEVEL__ == 0)
+
+		template<typename ... Args>
+		auto operator()(Args && ... args) const -> decltype(C()(std::forward<T2>(t), std::forward<Args>(args)...))
+		{ return C()(std::forward<T2>(t), std::forward<Args>(args)...); }
+
+#endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ == 6) && (__GNUC_PATCHLEVEL__ == 0)
 
 #endif // BOOST_WORKAROUND(__GNUC__, == 4) && (__GNUC_MINOR__ <= 5) || defined(BOOST_NO_VARIADIC_TEMPLATES)
 
