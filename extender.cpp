@@ -64,7 +64,6 @@ BEGIN_EXTENDER(test::A, (test::A&)(func3)((test::A&, a))((int, n)))
 	return a;
 }
 END_EXTENDER()
-#endif
 
 struct func3__ : public yak::util::extender3_<func3__, test::A>
 {
@@ -102,6 +101,7 @@ struct func3__ : public yak::util::extender3_<func3__, test::A>
 		}
 	};
 } func3_;
+#endif
 
 }
 
