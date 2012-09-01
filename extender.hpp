@@ -14,6 +14,7 @@
 #include <boost/fusion/functional/invocation/invoke.hpp>
 #include <boost/fusion/include/push_front.hpp>
 #include <boost/fusion/include/at_c.hpp>
+#include <boost/functional/forward_adapter.hpp>
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
@@ -22,6 +23,7 @@
 #include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
 #include <boost/preprocessor/repetition/enum.hpp>
+#include <boost/preprocessor/facilities/intercept.hpp>
 
 #include "forward_adapter_.hpp"
 #if !defined(BOOST_NO_VARIADIC_TEMPLATES)
@@ -212,6 +214,74 @@ struct extender3
 	{
 		return detail::extender3_wrap<C, T, Args...>(std::forward<Args>(args)...);
 	}
+};
+
+#else // !defined(BOOST_NO_VARIADIC_TEMPLATES) && !defined(BOOST_NO_DECLTYPE) && !defined(BOOST_NO_RVALUE_REFERENCES)
+
+namespace detail {
+
+#define EXTENDER_PP_TEMPLATE3_1(z, n, data) \
+template<typename C, typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
+struct BOOST_PP_CAT(extender3_wrap, n) \
+{ \
+	typedef boost::fusion::vector<BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT)> fusion_type; \
+	fusion_type args; \
+\
+	BOOST_PP_CAT(extender3_wrap, n)(BOOST_PP_ENUM_BINARY_PARAMS(n, A, &a)) : args(BOOST_PP_ENUM_PARAMS(n, a)) {} \
+	friend typename boost::result_of<typename C::_(T& BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))>::type \
+	operator->*(T& t, const BOOST_PP_CAT(extender3_wrap, n)& c) \
+	{ \
+		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))); \
+	} \
+	friend typename boost::result_of<typename C::_(const T& BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))>::type \
+	operator->*(const T& t, const BOOST_PP_CAT(extender3_wrap, n)& c) \
+	{ \
+		return boost::fusion::invoke(typename C::_(), boost::fusion::push_front(c.args, boost::ref(t))); \
+	} \
+};
+
+BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE3_1, _)
+
+#define EXTENDER_PP_TEMPLATE3_2(n) \
+	template<typename F BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
+	struct result<F(BOOST_PP_ENUM_BINARY_PARAMS(n, A, & BOOST_PP_INTERCEPT))> \
+	{ \
+		typedef BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> type; \
+	}; \
+	template<BOOST_PP_ENUM_PARAMS(n, typename A)> \
+	BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)> \
+	operator()(BOOST_PP_ENUM_BINARY_PARAMS(n, A, &a)) const \
+	{ \
+		return BOOST_PP_CAT(extender3_wrap, n)<C, T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, A)>(BOOST_PP_ENUM_PARAMS(n, a)); \
+	}
+#define EXTENDER_PP_TEMPLATE3_3(n) \
+	template<typename F> \
+	struct result<F()> \
+	{ \
+		typedef BOOST_PP_CAT(extender3_wrap, n)<C, T> type; \
+	}; \
+	BOOST_PP_CAT(extender3_wrap, n)<C, T> \
+	operator()() const \
+	{ \
+		return BOOST_PP_CAT(extender3_wrap, n)<C, T>(); \
+	}
+#define EXTENDER_PP_TEMPLATE3_4(z, n, data) BOOST_PP_IF(n, EXTENDER_PP_TEMPLATE3_2, EXTENDER_PP_TEMPLATE3_3)(n)
+
+template<typename C, typename T>
+struct extender3_wrap_factory
+{
+	template<typename>
+	struct result;
+
+	BOOST_PP_REPEAT(4, EXTENDER_PP_TEMPLATE3_4, _)
+};
+
+} // namespace detail
+
+// NOTE: irregular operator semantics/precedence with macro support
+template<typename C, typename T>
+struct extender3 : public boost::forward_adapter<detail::extender3_wrap_factory<C, T> >
+{
 };
 
 #endif // !defined(BOOST_NO_VARIADIC_TEMPLATES) && !defined(BOOST_NO_DECLTYPE) && !defined(BOOST_NO_RVALUE_REFERENCES)
