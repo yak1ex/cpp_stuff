@@ -254,7 +254,10 @@ struct extender2 : public boost::forward_adapter<detail::extender2_wrap_factory<
 
 #if defined(BOOST_NO_VARIADIC_MACROS)
 
-#define DEFINE_EXTENDER(target, name, impl) \
+#define DEFINE_EXTENDER1(target, name, impl) \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender1<BOOST_PP_CAT(name, _functor), target> \
+impl name
+#define DEFINE_EXTENDER2(target, name, impl) \
 struct BOOST_PP_CAT(name, _functor) : public yak::util::extender2<BOOST_PP_CAT(name, _functor), target> \
 { \
 	struct _ impl; \
@@ -262,7 +265,10 @@ struct BOOST_PP_CAT(name, _functor) : public yak::util::extender2<BOOST_PP_CAT(n
 
 #else // !defined(BOOST_NO_VARIADIC_MACROS)
 
-#define DEFINE_EXTENDER(target, name, ...) \
+#define DEFINE_EXTENDER1(target, name, ...) \
+struct BOOST_PP_CAT(name, _functor) : public yak::util::extender1<BOOST_PP_CAT(name, _functor), target> \
+__VA_ARGS__ name
+#define DEFINE_EXTENDER2(target, name, ...) \
 struct BOOST_PP_CAT(name, _functor) : public yak::util::extender2<BOOST_PP_CAT(name, _functor), target> \
 { \
 	struct _ __VA_ARGS__; \

@@ -46,7 +46,14 @@ struct func1_ : public yak::util::extender1<func1_, test::A>
 	}
 } func1;
 
-DEFINE_EXTENDER(test::A, func2, 
+DEFINE_EXTENDER1(test::A, func1_,
+	{
+		typedef void result_type;
+		result_type operator()(const test::A&) { std::cout << "func1_" << std::endl; }
+	}
+);
+
+DEFINE_EXTENDER2(test::A, func2, 
 	{
 		// MUST follow result_of protocol
 		template<typename>
@@ -107,10 +114,12 @@ int f() { return 0; }
 int main(void)
 {
 	using ext::func1;
+	using ext::func1_;
 	using ext::func2;
 
 	int n = 0;
 	test::A a = { 0 };
+	(a->*func1_)();
 	((a->*func1)(1)->*func1)(1.1); // Cascading but unintuitive
 	(const_cast<const test::A&>(a)->*func1)(1);
 	(a->*func1)(2, 3);
