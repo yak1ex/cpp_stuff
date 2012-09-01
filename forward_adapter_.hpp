@@ -11,14 +11,14 @@
 // Usage:
 //
 // T t; int n;
-// yak::boost::forward_adapter_<T, F> fa(t, F())
+// yak::boostex::forward_adapter_<T, F> fa(t, F())
 // fa(1, n); // call F()(t, 1, 2) with parameter types as T&, const int&, int&
 //
 // const T ct;
-// yak::boost::forward_adapter_<const T, F> fac(ct, F())
+// yak::boostex::forward_adapter_<const T, F> fac(ct, F())
 // fac(1, n); // call F()(ct, 1, 2) with parameter types as const T&, const int&, int&
 
-#ifndef YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_HPP_INCLUDED
+#ifndef YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_HPP_INCLUDED
 #   ifndef BOOST_PP_IS_ITERATING
 
 #   include <boost/config.hpp>
@@ -32,15 +32,15 @@
 
 #   include <boost/utility/result_of.hpp>
 
-#   ifndef YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY
-#     define YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY 6
-#   elif YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY < 3
-#     undef  YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY
-#     define YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY 3
+#   ifndef YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY
+#     define YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY 6
+#   elif YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY < 3
+#     undef  YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY
+#     define YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY 3
 #   endif
 
 namespace yak {
-namespace boost 
+namespace boostex 
 {
     template< typename T, typename Function, int Arity_Or_MinArity = -1, int MaxArity = -1 >
     class forward_adapter_;
@@ -75,10 +75,10 @@ namespace boost
     }
 
 #   define BOOST_TMP_MACRO(f,fn,fc) \
-        yak::boost::detail::forward_adapter_impl_< T, \
+        yak::boostex::detail::forward_adapter_impl_< T, \
             forward_adapter_<T,f,Arity_Or_MinArity,MaxArity>, fn, fc, \
             (MaxArity!=-1? MaxArity :Arity_Or_MinArity!=-1? Arity_Or_MinArity \
-                :YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY), \
+                :YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY), \
             (Arity_Or_MinArity!=-1? Arity_Or_MinArity : 0) >
 
     template< typename T, typename Function, int Arity_Or_MinArity, int MaxArity >
@@ -197,15 +197,15 @@ namespace boost
             }
 
 #       // This is the total number of iterations we need
-#       define count ((1 << YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY+1)-2)
+#       define count ((1 << YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY+1)-2)
 
 #       // Chain file iteration to virtually one loop
-#       if YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY <= 7
+#       if YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY <= 7
 #         define limit1 count
 #         define limit2 0
 #         define limit3 0
 #       else
-#         if YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY <= 15
+#         if YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_MAX_ARITY <= 15
 #           define limit1 (count >> 8)
 #           define limit2 255
 #           define limit3 0
@@ -237,28 +237,28 @@ namespace boost
 namespace boost {
 
     template<typename T, class F, int A0, int A1>
-    struct result_of<yak::boost::forward_adapter_<T,F,A0,A1> const ()>
-        : yak::boost::detail::forward_adapter_result_::template apply<
-            yak::boost::forward_adapter_<T,F,A0,A1> const () >
+    struct result_of<yak::boostex::forward_adapter_<T,F,A0,A1> const ()>
+        : yak::boostex::detail::forward_adapter_result_::template apply<
+            yak::boostex::forward_adapter_<T,F,A0,A1> const () >
     { };
     template<typename T, class F, int A0, int A1>
-    struct result_of<yak::boost::forward_adapter_<T,F,A0,A1>()>
-        : yak::boost::detail::forward_adapter_result_::template apply<
-            yak::boost::forward_adapter_<T,F,A0,A1>() >
+    struct result_of<yak::boostex::forward_adapter_<T,F,A0,A1>()>
+        : yak::boostex::detail::forward_adapter_result_::template apply<
+            yak::boostex::forward_adapter_<T,F,A0,A1>() >
     { };
     template<typename T, class F, int A0, int A1>
-    struct result_of<yak::boost::forward_adapter_<T,F,A0,A1> const& ()>
-        : yak::boost::detail::forward_adapter_result_::template apply<
-            yak::boost::forward_adapter_<T,F,A0,A1> const () >
+    struct result_of<yak::boostex::forward_adapter_<T,F,A0,A1> const& ()>
+        : yak::boostex::detail::forward_adapter_result_::template apply<
+            yak::boostex::forward_adapter_<T,F,A0,A1> const () >
     { };
     template<typename T, class F, int A0, int A1>
-    struct result_of<yak::boost::forward_adapter_<T,F,A0,A1>& ()>
-        : yak::boost::detail::forward_adapter_result_::template apply<
-            yak::boost::forward_adapter_<T,F,A0,A1>() >
+    struct result_of<yak::boostex::forward_adapter_<T,F,A0,A1>& ()>
+        : yak::boostex::detail::forward_adapter_result_::template apply<
+            yak::boostex::forward_adapter_<T,F,A0,A1>() >
     { };
 }
 
-#       define YAK_BOOST_FUNCTIONAL_FORWARD_ADAPTER_HPP_INCLUDED
+#       define YAK_BOOSTEX_FUNCTIONAL_FORWARD_ADAPTER_HPP_INCLUDED
 
 #   elif BOOST_PP_ITERATION_DEPTH() == 1 && limit2
 #     define  BOOST_PP_FILENAME_2 "forward_adapter_.hpp"
