@@ -21,6 +21,11 @@ struct func1_ : public yak::util::extender1<func1_, test::A>
 		std::cout << "int&: " << a.n << ':' << n << std::endl;
 		return a;
 	}
+	result_type operator()(const test::A& a, int n) const
+	{
+		std::cout << "[const] int&: " << a.n << ':' << n << std::endl;
+		return const_cast<test::A&>(a); // Just as test purpose
+	}
 	result_type operator()(test::A& a, double n) const
 	{
 		a.n += n;
@@ -114,6 +119,7 @@ int main(void)
 	int n = 0;
 	test::A a = { 0 };
 	((a->*func1)(1)->*func1)(1.1); // Cascading but unintuitive
+	(const_cast<const test::A&>(a)->*func1)(1);
 	(a->*func1)(2, 3);
 	(a->*func1)(2, f());
 	(a->*func1)(2, n);
